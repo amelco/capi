@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAPI — A Plain Interface</title>
+<link rel="icon" href="capi.svg" type="image/svg+xml">
+<style>
+  :root {
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: #FDF8F3;
+    color: #3B2A1D;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.65;
+  }
+  main {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .hero {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .hero img {
+    width: 213px;
+    height: 160px;
+    display: block;
+    margin: 0 auto 0.5rem;
+  }
+  h1 {
+    margin: 0.25rem 0;
+    font-size: 2.25rem;
+    letter-spacing: 0.02em;
+  }
+  .tagline {
+    margin: 0.25rem 0;
+    font-size: 1.15rem;
+  }
+  .lede {
+    max-width: 34rem;
+    margin: 0.85rem auto 0;
+    color: #7A6A5C;
+  }
+  h2 {
+    margin-top: 2.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #E8DCCF;
+    font-size: 1.5rem;
+  }
+  h3 {
+    margin-top: 1.75rem;
+    font-size: 1.15rem;
+  }
+  a {
+    color: #9C5B34;
+  }
+  code {
+    padding: 0.15em 0.35em;
+    background: #F1E7DD;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    margin: 1rem 0;
+    padding: 1rem 1.1rem;
+    background: #2B2118;
+    color: #F5EFE8;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+  pre code {
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+  }
+  pre.mermaid {
+    padding: 1rem;
+    background: #FFFFFF;
+    color: #3B2A1D;
+    border: 1px solid #E8DCCF;
+    text-align: center;
+  }
+  table {
+    width: 100%;
+    margin: 1rem 0;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  th,
+  td {
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid #E8DCCF;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #F5EDE4;
+  }
+  blockquote {
+    margin: 1.25rem 0;
+    padding: 0.75rem 1rem;
+    background: #F8F1EA;
+    border-left: 4px solid #D9C7B5;
+    border-radius: 0 6px 6px 0;
+    color: #5C4A3B;
+  }
+  hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 1px solid #E8DCCF;
+  }
+  ul {
+    padding-left: 1.3rem;
+  }
+  li {
+    margin: 0.3rem 0;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <img src="capi.svg" alt="Capi the capybara" width="213" height="160">
+    <h1>CAPI</h1>
+    <p class="tagline"><strong>CAPI is A Plain Interface.</strong></p>
+    <p class="lede">A minimal HTTP/1.1 web API written in C. The goal here is simplicity and little dependencies.</p>
+  </header>
+
+  <h2 id="dependencies">Dependencies</h2>
+  <ul>
+    <li>Linux / POSIX (sockets, <code>pthreads</code>, <code>gmtime_r</code>, <code>/dev/urandom</code>)</li>
+    <li>GCC or Clang with C11 support</li>
+  </ul>
+
+  <hr>
+
+  <h2 id="quick-start">Quick start</h2>
+
+  <h3>1. Build the build tool (once)</h3>
+  <p><code>forge</code> is the project's build driver. Build it once with:</p>
+  <pre><code class="language-sh">gcc -o forge forge.c</code></pre>
+  <p>and just call <code>forge</code> whenever you want to compile Capi.</p>
+
+  <h3>Important</h3>
+  <p><code>forge</code> shells out to:</p>
+  <pre><code class="language-sh">gcc -o build/capi -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread</code></pre>
+
+  <h3>2. Run the server</h3>
+  <p>Run from the repository root — the <code>/</code> route reads <code>./frontend/index.html</code>:</p>
+  <pre><code class="language-sh">./build/capi</code></pre>
+  <p>Open <a href="http://localhost:6969">http://localhost:6969</a> or call the endpoints with <code>curl</code>.</p>
+
+  <hr>
+
+  <h2 id="routes">Routes</h2>
+  <p>All routes are hard-coded in the block of <code>handle_client()</code> in <code>api/api.c</code>.</p>
+
+  <h3><code>GET /</code></h3>
+  <p>Serves <code>frontend/index.html</code> as <code>text/html</code>. If the file cannot be read, returns <code>404</code>.</p>
+  <pre><code class="language-sh">curl http://localhost:6969/</code></pre>
+
+  <h3><code>GET /capi.svg</code></h3>
+  <p>Serves <code>frontend/capi.svg</code> as <code>image/svg+xml</code>. It is the capybara mascot shown on the index page and used as the favicon.</p>
+  <pre><code class="language-sh">curl http://localhost:6969/capi.svg</code></pre>
+
+  <h3><code>GET /hasUrlParam/&lt;name&gt;</code></h3>
+  <p>It is an example of a generic GET endpoint.</p>
+  <p>Reads the value of the <code>paramValue</code> query parameter. If the query string has no <code>paramValue</code>, the route falls back to a JSON body with a <code>paramValue</code> string property (useful for <code>GET</code> requests sent with a body).</p>
+  <pre><code class="language-sh">curl "http://localhost:6969/hasUrlParam/anything?paramValue=hello"</code></pre>
+  <p>or:</p>
+  <pre><code class="language-sh">curl -X GET http://localhost:6969/hasUrlParam/anything \
+     -H 'Content-Type: application/json' \
+     -d '{"paramValue":"hello"}'</code></pre>
+
+  <h3><code>POST /hasBodyParam</code></h3>
+  <p>It is an example of a generic POST endpoint.</p>
+  <p>Reads the <code>bodyParam</code> string property from the JSON request body and echoes it back as the response body.</p>
+  <pre><code class="language-sh">curl -X POST http://localhost:6969/hasBodyParam \
+     -H 'Content-Type: application/json' \
+     -d '{"bodyParam":"hello"}'</code></pre>
+
+  <hr>
+
+  <h2 id="adding-a-route">Adding a route</h2>
+  <p>A new route is just another branch.</p>
+  <p>Example for a <code>GET /health</code> endpoint:</p>
+  <pre><code class="language-c">case VERB_GET:
+    if (strcmp(res.resource, "/") == 0) {
+        /* serve a file */
+    }
+    else if (strcmp(res.resource, "/health") == 0) {
+        char *body = "{\"status\":\"ok\"}";
+        free_response(&amp;res);
+        send_200_to_client_json(client, body, (int)strlen(body));
+    }
+    else {
+        send_404_to_client(client);
+    }
+    break;</code></pre>
+  <p>Key points:</p>
+  <ul>
+    <li>Always call <code>free_response(&amp;res)</code> once you are done reading <code>res.resource</code>, <code>res.query</code> and <code>res.body</code>. They are heap-allocated by <code>read_from_client()</code>.</li>
+    <li>Use the <code>send_*</code> helpers instead of writing to the socket manually.</li>
+    <li><code>payload</code> is a fixed <code>PAYLOAD_SIZE</code> (8 KiB) stack buffer; requests larger than that are truncated.</li>
+    <li><code>VERB_QUANTITY_</code> is checked with <code>static_assert</code> so adding a new verb to the enum forces you to update the switch.</li>
+  </ul>
+
+  <h3>Per-request scratch memory</h3>
+  <p>Each request gets its own <code>Arena</code>:</p>
+  <pre><code class="language-c">Arena arena;
+arena_init(&amp;arena);
+
+char *copy = arena_strdup(&amp;arena, res.resource);
+/* ... */
+
+arena_free(&amp;arena);</code></pre>
+  <p>Anything that must outlive the request (shared state, caches, maps) must use <code>malloc</code>/<code>strdup</code>, not the arena, or it will dangle after <code>arena_free()</code>.</p>
+
+  <h3>Client jobs</h3>
+  <p><code>main()</code> hands each accepted socket to a detached thread through a <code>ClientJob</code> struct. Extend that struct to pass request-scoped context into <code>handle_client()</code>:</p>
+  <pre><code class="language-c">typedef struct {
+    int client;
+    char *example;
+    /* add more per-connection data here */
+} ClientJob;</code></pre>
+
+  <h3>Shared state</h3>
+  <p>Handlers run concurrently, so any shared mutable state must be guarded. A mutex is already sketched in the file:</p>
+  <pre><code class="language-c">static pthread_mutex_t your_lock = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_lock(&amp;your_lock);
+/* read/write shared state */
+pthread_mutex_unlock(&amp;your_lock);</code></pre>
+
+  <hr>
+
+  <h2 id="libraries">Libraries</h2>
+  <p>The headers in <code>libs/</code> are STB-style single-header libraries: declarations are always visible, and the implementation is compiled only in the translation unit that defines the matching macro before including the header.</p>
+  <table>
+    <thead>
+      <tr><th>Header</th><th>Macro</th><th>Overview</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ahb_lib.h</code></td><td><code>AHB_LIB_IMPLEMENTATION</code></td><td>General utilities: logging, command execution, args, string builders, hash map, file helpers, temp allocator, colors</td></tr>
+      <tr><td><code>arena.h</code></td><td><code>ARENA_IMPLEMENTATION</code></td><td>Bump allocator for request-scoped scratch memory</td></tr>
+      <tr><td><code>json.h</code></td><td><code>JSON_IMPLEMENTATION</code></td><td>Minimal JSON parser with typed object/array accessors</td></tr>
+      <tr><td><code>network.h</code></td><td><code>NETWORK_IMPLEMENTATION</code></td><td>Loopback TCP server/client, HTTP request parsing and response helpers</td></tr>
+    </tbody>
+  </table>
+  <p>Define each macro in exactly one translation unit; <code>api.c</code> does this for all four. Note that <code>network.h</code> also defines <code>AHB_LIB_IMPLEMENTATION</code>, so a file including it must not include <code>ahb_lib.h</code> with its implementation again.</p>
+
+  <hr>
+
+  <h2 id="request-lifecycle">Request lifecycle</h2>
+  <pre class="mermaid">sequenceDiagram
+    participant C as Client
+    participant M as main()
+    participant T as handle_client()
+
+    C->>M: TCP connect
+    M->>M: accept_client() + timeout setup
+    M->>T: pthread_create(detached) with ClientJob
+    T->>T: read_from_client()
+    T->>T: arena_init()
+    T->>T: route on verb + resource
+    T->>C: send_200/400/404/500
+    T->>T: free_response() + arena_free()
+    T->>C: close()</pre>
+
+  <h2 id="projects">Projects that uses CAPI</h2>
+  <p><a href="https://fleabag-app.duckdns.org">https://fleabag-app.duckdns.org</a></p>
+
+  <hr>
+
+  <h2 id="limitations">Limitations</h2>
+  <p>These are intentional for a teaching-sized framework:</p>
+  <ul>
+    <li>Listens only on <code>127.0.0.1</code>; the address is not configurable, only the port.</li>
+    <li>Request payloads are capped at 8 KiB (<code>PAYLOAD_SIZE</code>); paths and query strings are capped at 256 bytes.</li>
+    <li>Only <code>GET</code> and <code>POST</code> are distinguished; any other method is treated as <code>GET</code>.</li>
+    <li>No TLS, no keep-alive, no chunked transfer encoding, no HTTP parsing hardening.</li>
+    <li><code>send_400_to_client()</code> emits the status line <code>400 Not Found</code> instead of <code>400 Bad Request</code>.</li>
+  </ul>
+  <blockquote>Do not expose this server to a network without adding proper request limits, timeouts and TLS in front of it.</blockquote>
+
+  <hr>
+
+  <h2 id="troubleshooting">Troubleshooting</h2>
+  <p><strong><code>Could not load the file index.html</code></strong> — the server was not started from the repository root. <code>cd</code> to the project root and run <code>./build/capi</code>.</p>
+  <p><strong><code>Could not bind the server to port 6969</code></strong> — another process is using the port:</p>
+  <pre><code class="language-sh">ss -ltnp | grep 6969</code></pre>
+  <p><strong>Rebuild after editing headers</strong> — <code>forge</code> recompiles <code>api/api.c</code>, which is the only translation unit with the library implementations, so a single <code>./forge api</code> is enough.</p>
+</main>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+</body>
+</html>
