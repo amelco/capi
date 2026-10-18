@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         printf("Usage: %s <command>\n\n", argv[0]);
         printf("Commands:\n");
         printf("  all       build everything (default)\n");
-        printf("  api       build fleabag api\n");
+        printf("  api       build api\n");
         return 0;
     }
     
