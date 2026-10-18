@@ -1,16 +1,12 @@
 # CAPI
 
-**CAPI's A Plain Interface.**
+**CAPI is A Plain Interface.**
 
 <p align="center">
   <img src="frontend/capi.svg" alt="Capi the capybara" width="213" height="160">
 </p>
 
 A minimal HTTP/1.1 web API written in C. The goal here is simplicity and little dependencies.
-
-`CAPI` stands for **CAPI is A Plain Interface**. The mascot is a brazilian capybara.
-
----
 
 ## Dependencies
 
