@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-labelledby="capi-title">
+  <title id="capi-title">Capi the capybara</title>
+  <defs>
+    <linearGradient id="capi-snout" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#7C512C"/>
+      <stop offset="1" stop-color="#66401F"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="184" cy="232" rx="124" ry="7" fill="#3B2A1D" opacity="0.08"/>
+  <g stroke="#4F2D12" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 131 78 C 126 52 139 38 155 40 C 170 42 178 58 172 80 Z" fill="#B56A2E"/>
+    <ellipse cx="98" cy="62" rx="27" ry="30" transform="rotate(-25 98 62)" fill="#B56A2E"/>
+    <ellipse cx="102" cy="60" rx="13" ry="16" transform="rotate(-25 102 60)" fill="#F4A3AC" stroke="none"/>
+    <path d="M 52 205 C 42 178 46 148 60 126 C 74 102 100 86 132 76 C 148 71 160 66 172 63 C 196 57 224 60 248 68 C 276 77 300 94 308 118 C 314 140 310 162 296 178 C 284 192 266 200 246 201 C 238 201 233 205 230 213 C 228 220 221 224 211 224 L 92 224 C 68 224 55 217 52 205 Z" fill="#B56A2E"/>
+    <path d="M 246 70 C 277 74 303 96 309 126 C 315 154 300 182 272 193 C 248 201 226 191 219 172 C 213 154 219 130 228 110 C 234 96 240 82 246 70 Z" fill="url(#capi-snout)"/>
+    <path d="M 118 108 C 130 117 143 118 155 112" fill="none" stroke-width="9"/>
+    <circle cx="287" cy="105" r="5" fill="#4F2D12" stroke="none" opacity="0.7"/>
+    <path d="M 253 142 C 259 154 273 156 281 144" fill="none" stroke="#BF8A5A" stroke-width="5"/>
+  </g>
+</svg>

@@ -81,6 +81,18 @@ void *handle_client(void *arg)
                     free(content);
                 }
             }
+            else if (strcmp(res.resource, "/capi.svg") == 0) {
+                free_response(&res);
+                char *content = ahb_read_entire_file("./frontend/capi.svg");
+                if (!content) {
+                    ahb_Log(ERROR, "Could not load the file capi.svg");
+                    send_404_to_client(client);
+                }
+                else {
+                    send_200_to_client_ex(client, content, (int)strlen(content), "image/svg+xml", NULL);
+                    free(content);
+                }
+            }
             // example: /hasUrlParam/paramValue
             else if (strstr(res.resource, "/hasUrlParam/")) {
                 char *paramName = strstr(res.resource, "/hasUrlParam/") + strlen("/hasUrlParam/");

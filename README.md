@@ -1,23 +1,14 @@
-# http_c_framework
+# CAPI
 
-A minimal HTTP/1.1 web API written in C. The goal here is simplicity and little dependencies. It is multithreaded by default.
+**CAPI's A Plain Interface.**
 
-The server listens on `127.0.0.1:6969`.
+<p align="center">
+  <img src="frontend/capi.svg" alt="Capi the capybara" width="213" height="160">
+</p>
 
-```
-.
-├── .gitignore
-├── forge.c               # build tool source (compiled to ./forge)
-├── api/
-│   └── api.c             # the entire web API: routing + server loop
-├── frontend/
-│   └── index.html        # static page served at "/"
-└── libs/
-    ├── ahb_lib.h         # general utilities (logging, exec, strings, map, ...)
-    ├── arena.h           # bump allocator
-    ├── json.h            # JSON parser
-    └── network.h         # sockets + HTTP parsing/response helpers
-```
+A minimal HTTP/1.1 web API written in C. The goal here is simplicity and little dependencies.
+
+`CAPI` stands for **CAPI is A Plain Interface**. The mascot is a brazilian capybara.
 
 ---
 
@@ -37,13 +28,13 @@ The server listens on `127.0.0.1:6969`.
 ```sh
 gcc -o forge forge.c
 ```
-and just call `forge` whenever you want to compile the api.
+and just call `forge` whenever you want to compile Capi.
 
 ### Important
 `forge` shells out to:
 
 ```sh
-gcc -o api/build/api -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread
+gcc -o build/capi -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread
 ```
 
 ### 2. Run the server
@@ -51,7 +42,7 @@ gcc -o api/build/api -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread
 Run from the repository root — the `/` route reads `./frontend/index.html`:
 
 ```sh
-./api/build/api
+./build/capi
 ```
 
 Open <http://localhost:6969> or call the endpoints with `curl`.
@@ -69,6 +60,15 @@ Serves `frontend/index.html` as `text/html`. If the file cannot be read, returns
 
 ```sh
 curl http://localhost:6969/
+```
+
+### `GET /capi.svg`
+
+Serves `frontend/capi.svg` as `image/svg+xml`. It is the capybara mascot shown on
+the index page and used as the favicon.
+
+```sh
+curl http://localhost:6969/capi.svg
 ```
 
 ### `GET /hasUrlParam/<name>`
@@ -243,7 +243,7 @@ timeouts and TLS in front of it.
 ## Troubleshooting
 
 **`Could not load the file index.html`** — the server was not started from the
-repository root. `cd` to the project root and run `./api/build/api`.
+repository root. `cd` to the project root and run `./build/capi`.
 
 **`Could not bind the server to port 6969`** — another process is using the port:
 

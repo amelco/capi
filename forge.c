@@ -7,10 +7,10 @@
 
 void build_api_impl(ExecResult *res, bool force_dev)
 {
-    Log_nonl(INFO, "Compiling C api...\n");
-    if (!ahb_exec(res, "mkdir -p api/build")) Log(FATAL, "Could not create `api/build` directory");
+    Log_nonl(INFO, "Compiling Capi... ");
+    if (!ahb_exec(res, "mkdir -p build")) Log(FATAL, "Could not create `build` directory");
     char cmd[512];
-    snprintf(cmd, sizeof cmd, "gcc -o api/build/api -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread");
+    snprintf(cmd, sizeof cmd, "gcc -o build/capi -g -Wall -Wextra -Icore/src -Ilibs api/api.c -pthread");
     if (!ahb_exec(res, cmd)) Log(FATAL, "Could not compile api");
     printf("Done!\n");
 }
