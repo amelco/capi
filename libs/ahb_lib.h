@@ -19,16 +19,11 @@
 #include <time.h>
 
 /* ---- Macros -------------------------------------------------------------- */
-#define _AHB_EXIT(thing, format, ...)                   \
-    do {                                                \
-        printf("%s:%d: "thing" (", __FILE__, __LINE__); \
-        printf(format")\n", ##__VA_ARGS__);                               \
-        exit(1);                                        \
-    } while (0)                                         
+void _ahb_exit(const char *file, int line, const char *thing, const char *format, ...);
 
-#define AHB_TODO(format, ...) _AHB_EXIT("TODO", format, ##__VA_ARGS__)
-#define AHB_ABORT(format, ...) _AHB_EXIT("ABORT", format, ##__VA_ARGS__)
-#define AHB_UNREACHABLE(format, ...) _AHB_EXIT("UNREACHABLE", format, ##__VA_ARGS__)
+#define AHB_TODO(...) _ahb_exit(__FILE__, __LINE__, "TODO", __VA_ARGS__)
+#define AHB_ABORT(...) _ahb_exit(__FILE__, __LINE__, "ABORT", __VA_ARGS__)
+#define AHB_UNREACHABLE(...) _ahb_exit(__FILE__, __LINE__, "UNREACHABLE", __VA_ARGS__)
 
 #define da_append(p, item)                                                      \
     do {                                                                        \
@@ -95,7 +90,7 @@ extern bool log_print_timestamp;
 /* -------------------------------------------------------------------------- */
 
 /* ******************************************************************************************
- * Test functions
+ * Test functions - This is to be removed from here soon. Not sure if it is that useful
  * Usage: ahb_test(test_name, command, result, validation_function, expected_result, user_data)
  *   test_name            just a name to identify the test
      command              command to be executed in the command line
@@ -192,7 +187,7 @@ void ahb_map_free(Map *map, void (*free_value)(void *));
 
 // command line arguments management
 void ahb_args_init(int argc, char **argv);
-char *ahb_args_next();
+char *ahb_args_next(void);
 
 // command execution
 bool ahb_exec(ExecResult *result, char *cmd);
@@ -212,7 +207,7 @@ void ahb_color_printf(const char *color, const char *format, ...);
 //   temp_alloc() will store the content in a temporary allocator that can be
 //   freed using temp_alloc_free().
 char *ahb_temp_alloc(const char *content);
-void ahb_temp_alloc_free();
+void ahb_temp_alloc_free(void);
 
 // file operations
 bool ahb_file_exits(const char *path);
@@ -283,20 +278,31 @@ bool log_print_timestamp = true;
 static State st = {0};
 static TempAlloc allocator = {0};
 
+void _ahb_exit(const char *file, int line, const char *thing, const char *format, ...)
+{
+    va_list args;
+    printf("%s:%d: %s (", file, line, thing);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf(")\n");
+    exit(1);
+}
+
 /* **************************************************** 
  * Test Functions
  */
 void ahb_test_int(_TEST_PARAMS(int))
 {
     _EXECUTE_TEST();
-    _VALIDATE(typeof(validation(result, userdata)));
+    _VALIDATE(int);
     _PRINT_RESULT();
 }
 
 void ahb_test_bool(_TEST_PARAMS(bool))
 {
     _EXECUTE_TEST();
-    _VALIDATE(typeof(validation(result, userdata)));
+    _VALIDATE(bool);
     _PRINT_RESULT();
 }
 /* **************************************************** */

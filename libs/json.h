@@ -1,39 +1,10 @@
 /*
- * Minimal JSON parser.
- *
- * Single-header (STB style) library: define JSON_IMPLEMENTATION in exactly ONE translation unit
- * before including it. It parses a JSON value into an in-memory tree (DOM) and exposes a small,
- * typed accessor API so callers never touch the union by hand. It depends on libc only.
- *
- *   #define JSON_IMPLEMENTATION
- *   #include "json.h"
- *
- *   JsonError error;
- *   JsonNode *root = json_parse(text, &error);
- *   if (root) {
- *       for (size_t i = 0; i < json_array_count(root); i++) {
- *           JsonNode *flag = json_array_get(root, i);
- *           const char *name = json_string(json_object_get(flag, "name"));
- *           bool value = json_bool(json_object_get(flag, "value"), false);
- *       }
- *       json_free(root);
- *   }
- *
- * Supported subset of RFC 8259:
- *   - one value as the root: object, array, string, number, bool, null;
- *   - whitespace between tokens (space, tab, CR, LF);
- *   - simple string escapes: \" \\ \/ \b \f \n \r \t.
- *
- * Accepted trade-offs (by design):
- *   - \uXXXX escapes are NOT decoded; they are reported as a parse error.
- *   - String bytes are copied verbatim: no UTF-8 validation is performed.
- *   - Numbers are stored as `double`; no precision guarantees.
- *   - Duplicate object keys are kept as separate members (no dedup); json_object_get() returns
- *     the FIRST match.
- *   - Recursion is bounded by JSON_MAX_DEPTH; deeper input is a parse error, not a crash.
- *
- * by Andre Herman Freire Bezerra (2026)
- */
+* Single header (STB style) library
+* 
+* This file has an basic json parser library. 
+*
+* by Andre Herman F. Bezerra (amelco), 2026
+*/
 
 #ifndef JSON_H
 #define JSON_H
