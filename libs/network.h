@@ -54,6 +54,7 @@ typedef struct {
 int server_connect(int port);
 int accept_client(int server);
 Response read_from_client(int client, char *payload, int payload_size);
+Response read_from_client_arena(Arena *arena, int client, char *payload, int payload_size);
 void request_header(char *out, const char *payload, int size, const char *name);
 void request_cookie(char *out, const char *payload, int size, const char *name);
 void random_token(char *out, size_t size);
@@ -352,7 +353,7 @@ int _get_content_len(const char *payload)
     return atoi(value);
 }
 
-Response read_from_client(int client, char *payload, int payload_size)
+Response _read_from_client(int client, char *payload, int payload_size, Arena *arena)
 {
     Response res = {
         .verb = VERB_GET,
@@ -393,21 +394,36 @@ Response read_from_client(int client, char *payload, int payload_size)
 
             char resource[MAX_RESOURCE_LEN] = {0};
             _get_resource(resource, payload, sizeof(resource));
-            res.resource = strdup(resource);
+            if (arena) res.resource = arena_strdup(arena, resource);
+            else       res.resource = strdup(resource);
 
             char query[MAX_RESOURCE_LEN] = {0};
             _get_query(query, payload, sizeof(query));
-            if (query[0] != '\0') res.query = strdup(query);
+            if (query[0] != '\0') {
+                if (arena) res.query = arena_strdup(arena, query);
+                else res.query = strdup(query);
+            }
         }
 
         if (total >= header_size + content_length) {
             if (content_length > 0) {
-                res.body = strdup(payload + header_size);
+                if (arena) res.body = arena_strdup(arena, payload + header_size);
+                else       res.body = strdup(payload + header_size);
             }
             return res;
         }
     }
     return res;
+}
+
+Response read_from_client(int client, char *payload, int payload_size)
+{
+    return _read_from_client(client, payload, payload_size, NULL);
+}
+
+Response read_from_client_arena(Arena *arena, int client, char *payload, int payload_size)
+{
+    return _read_from_client(client, payload, payload_size, arena);
 }
 
 void _append_date_header(StringBuilder *sb)

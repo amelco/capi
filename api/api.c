@@ -3,11 +3,11 @@
 #include <pthread.h>
 #include <sys/stat.h>
 
+#define AHB_LIB_IMPLEMENTATION
+#include "ahb_lib.h"
+
 #define NETWORK_IMPLEMENTATION
 #include "network.h"
-
-#define ARENA_IMPLEMENTATION
-#include "arena.h"
 
 #define JSON_IMPLEMENTATION
 #include "json.h"
@@ -54,50 +54,44 @@ void *handle_client(void *arg)
     char *example = job->example;
     free(job);
 
-    char payload[PAYLOAD_SIZE] = {0};
-    Response res = read_from_client(client, payload, PAYLOAD_SIZE);
-    if (res.resource == NULL) {
-        CLOSE(client);
-        return NULL;
-    }
-    ahb_Log(INFO, "client %d: resource %s", client, res.resource);
-
+    // by default, 4MB arena size
     Arena arena = {0};
     arena_init(&arena);
+
+    char payload[PAYLOAD_SIZE] = {0};
+    Response res = read_from_client_arena(&arena, client, payload, PAYLOAD_SIZE);
+    if (res.resource == NULL) {
+        goto defer;
+    }
+    ahb_Log(INFO, "client %d: resource %s", client, res.resource);
 
     static_assert(VERB_QUANTITY_ == 2, "Incomplete switch-case");
     switch (res.verb) {
         case VERB_GET:
             if (strcmp(res.resource, "/") == 0) {
-                free_response(&res);
-                char *content = ahb_read_entire_file("./frontend/index.html");
-                printf("%s\n", content);
+                char *content = ahb_read_entire_file_arena(&arena, "./frontend/index.html");
                 if (!content) {
                     ahb_Log(ERROR, "Could not load the file index.html");
                     send_404_to_client(client);
                 }
                 else {
                     send_200_to_client(client, content, (int)strlen(content));
-                    free(content);
                 }
             }
             else if (strcmp(res.resource, "/capi.svg") == 0) {
-                free_response(&res);
-                char *content = ahb_read_entire_file("./frontend/capi.svg");
+                char *content = ahb_read_entire_file_arena(&arena, "./frontend/capi.svg");
                 if (!content) {
                     ahb_Log(ERROR, "Could not load the file capi.svg");
                     send_404_to_client(client);
                 }
                 else {
                     send_200_to_client_ex(client, content, (int)strlen(content), "image/svg+xml", NULL);
-                    free(content);
                 }
             }
             // example: /hasUrlParam/paramValue
             else if (strstr(res.resource, "/hasUrlParam/")) {
                 char *paramName = strstr(res.resource, "/hasUrlParam/") + strlen("/hasUrlParam/");
                 if (*paramName == '\0') {
-                    free_response(&res);
                     send_404_to_client(client);
                     break;
                 }
@@ -105,7 +99,6 @@ void *handle_client(void *arg)
                 char *paramValue = res.query ? query_param(&arena, res.query, "paramValue") : NULL;
                 if (!paramValue) {
                     if (!res.body) {
-                        free_response(&res);
                         send_404_to_client(client);
                         break;
                     }
@@ -113,7 +106,6 @@ void *handle_client(void *arg)
                 }
 
                 if (!paramValue)  {
-                    free_response(&res);
                     ahb_Log(INFO, "This route have to have the 'paramValue' to work");
                     send_400_to_client(client);
                     break;
@@ -125,25 +117,22 @@ void *handle_client(void *arg)
                 char *response = "{\"value:\"\"a json response\"}";
 
                 send_200_to_client_json(client, response, strlen(response));
-                free_response(&res);
             }
             else {
                 ahb_Log(INFO, "GET resource '%s' not found", res.resource);
-                free_response(&res);
                 send_404_to_client(client);
             }
             break;
         case VERB_POST:
             if (strcmp(res.resource, "/hasBodyParam") == 0) {
                 if (!res.body) {
-                    free_response(&res);
                     break;
                 }
 
                 const char *bodyParam = json_has_string_property(&arena, res.body, "bodyParam");
                 if (!bodyParam) {
-                    free_response(&res);
                     send_400_to_client(client);
+                    break;
                 }
                 
                 // do something with bodyParam, like create a db row
@@ -155,7 +144,6 @@ void *handle_client(void *arg)
 
                 bool created = true;
 
-                free_response(&res);
                 if (created) {
                     send_200_to_client(client, (char*)bodyParam, strlen(bodyParam));
                 }
@@ -166,16 +154,15 @@ void *handle_client(void *arg)
             }
             else {
                 ahb_Log(INFO, "POST resource '%s' not found", res.resource);
-                free_response(&res);
                 send_404_to_client(client);
             }
             break;
         default:
-            free_response(&res);
             AHB_UNREACHABLE("handle_client()");
     }
-    arena_free(&arena);
 
+    defer:
+    arena_free(&arena);
     CLOSE(client);
     return NULL;
 }
@@ -195,6 +182,7 @@ int main() {
         int client = accept_client(server);
         if (client < 0) continue;
 
+        // this is freed inside handle_client. It's fine for now, but we can think in a better way of doing this
         ClientJob *job = malloc(sizeof *job);
         if (!job) {
             ahb_Log(ERROR, "Could not allocate a client job");

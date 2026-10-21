@@ -126,7 +126,7 @@ case VERB_GET:
 
 Key points:
 
-- Always call `free_response(&res)` once you are done reading `res.resource`,
+- If not using the arena version, always call `free_response(&res)` once you are done reading `res.resource`,
   `res.query` and `res.body`. They are heap-allocated by `read_from_client()`.
 - Use the `send_*` helpers instead of writing to the socket manually.
 - `payload` is a fixed `PAYLOAD_SIZE` (8 KiB) stack buffer; requests larger than
