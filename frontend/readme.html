@@ -229,7 +229,6 @@
     }
     else if (strcmp(res.resource, "/health") == 0) {
         char *body = "{\"status\":\"ok\"}";
-        free_response(&amp;res);
         send_200_to_client_json(client, body, (int)strlen(body));
     }
     else {
@@ -238,7 +237,7 @@
     break;</code></pre>
   <p>Key points:</p>
   <ul>
-    <li>If you use <code>read_from_client()</code> (no arena), always call <code>free_response(&amp;res)</code> once you are done reading <code>res.resource</code>, <code>res.query</code> and <code>res.body</code>. They are heap-allocated by <code>read_from_client()</code>. With <code>read_from_client_arena()</code> the arena owns them.</li>
+    <li>If you use <code>read_from_client()</code> (no arena), always call <code>free_response(&amp;res)</code> once you are done reading <code>res.resource</code>, <code>res.query</code> and <code>res.body</code>. They are heap-allocated by <code>read_from_client()</code>. With <code>read_from_client_arena()</code> the arena owns them and you just need to call <code>free_arena()</code> at the end of <code>handle_client()</code></li>
     <li>Use the <code>send_*</code> helpers instead of writing to the socket manually.</li>
     <li><code>payload</code> is a fixed <code>PAYLOAD_SIZE</code> (8 KiB) stack buffer; requests larger than that are truncated.</li>
     <li><code>VERB_QUANTITY_</code> is checked with <code>static_assert</code> so adding a new verb to the enum forces you to update the switch.</li>
