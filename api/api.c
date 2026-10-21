@@ -62,7 +62,7 @@ void *handle_client(void *arg)
     }
     ahb_Log(INFO, "client %d: resource %s", client, res.resource);
 
-    Arena arena;
+    Arena arena = {0};
     arena_init(&arena);
 
     static_assert(VERB_QUANTITY_ == 2, "Incomplete switch-case");

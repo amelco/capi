@@ -1,136 +1,140 @@
-/*
-* Single header (STB style) library
-* 
-* This file has an basic arena library. 
-*
-* by Andre Herman F. Bezerra (amelco), 2026
-*/
-
-#ifndef ARENA_H
-#define ARENA_H
+#ifndef AHB_ARENA_H
+#define AHB_ARENA_H
 
 #include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
-#ifndef ARENA_BLOCK_SIZE
-#define ARENA_BLOCK_SIZE (4 * 1024)
-#endif
-
-typedef struct ArenaBlock {
-    struct ArenaBlock *next;
-    size_t capacity;
-    size_t used;
-    char data[];
-} ArenaBlock;
+/* C99 alignment shenanigans */
+#define ARENA_ALIGNMENT ((size_t)sizeof(union { long double ld; double d; void *ptr; long long ll; }))
+// compile-time assert unused on purpose. Errors out on build if alignment is not a power of two
+typedef char _arena_alignment_is_power_of_two[
+    (ARENA_ALIGNMENT & (ARENA_ALIGNMENT - 1)) == 0 ? 1 : -1];
+/* end alignment shenanigans */ 
 
 typedef struct {
-    ArenaBlock *head;
-    ArenaBlock *current;
+    void *data;
+    size_t capacity;
+    size_t index;
 } Arena;
 
 void arena_init(Arena *arena);
-void *arena_alloc(Arena *arena, size_t size);
-char *arena_strdup(Arena *arena, const char *content);
-char *arena_strndup(Arena *arena, const char *content, size_t size);
+char *arena_alloc(Arena *arena, size_t size);
 void arena_reset(Arena *arena);
 void arena_free(Arena *arena);
 
-#endif // ARENA_H
+// aren't those should be on ahb_lib??
+char *arena_strdup(Arena *arena, const char *content);
+char *arena_strndup(Arena *arena, const char *content, size_t size);
 
+#endif // AHB_ARENA_H
 
 #ifdef ARENA_IMPLEMENTATION
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-#define ARENA_ALIGNMENT ((size_t)_Alignof(max_align_t))
-#else
-typedef union ArenaAlignment {
-    long double ld;
-    double d;
-    void *ptr;
-    long long ll;
-} ArenaAlignment;
-#define ARENA_ALIGNMENT ((size_t)sizeof(ArenaAlignment))
+#ifndef INIT_CAPACITY
+#define INIT_CAPACITY (4 * 1024 * 1024)  // 4 MB
 #endif
 
-static ArenaBlock *_arena_new_block(size_t capacity)
+
+// 'private' functions
+// TODO: do not use realloc, so we don't loose out pointers
+//       use malloc instead to create a new arena "block" and link the older with the newer somehow 
+static bool _realloc_if_needed(Arena *arena, size_t size)
 {
-    ArenaBlock *block = malloc(sizeof *block + capacity);
-    if (!block) return NULL;
-    block->next = NULL;
-    block->capacity = capacity;
-    block->used = 0;
-    return block;
+    assert(arena->index <= arena->capacity);
+    if (size == 0) return true;
+
+    size_t remaining_space = arena->capacity - arena->index;
+    bool needs_realloc = size > remaining_space;
+
+    if (needs_realloc) {
+        size_t needed = arena->index + size;
+        size_t new_size = arena->capacity ? arena->capacity : INIT_CAPACITY;
+        // make sure that we allocate enough space
+        while (new_size < needed) {
+            if (new_size > SIZE_MAX / 2) { 
+                // double new_size here would overflow size_t
+                new_size = needed; 
+                break; 
+            }
+            new_size *= 2;
+        }
+
+        void *new_data = realloc(arena->data, new_size);
+        if (new_data == NULL) return false;
+
+        arena->data = new_data;
+        arena->capacity = new_size;
+    }
+    return true;
 }
 
-void arena_init(Arena *arena)
-{
-    arena->head = NULL;
-    arena->current = NULL;
+// function implementations
+
+// this is not really needed. If you have arena zero initilized you can call arena_alloc() directly.
+// keeping this for simetry (arena_init, arena_free)
+void arena_init(Arena *arena) {
+    (void)_realloc_if_needed(arena, INIT_CAPACITY);
 }
 
-void *arena_alloc(Arena *arena, size_t size)
+// arena must be zero initialized (e.g. `Arena arena = {0};`)
+// it's the only way we can guarantee correct behaviour
+// returns memory aligned to ARENA_ALIGNMENT, or NULL on failure
+char *arena_alloc(Arena *arena, size_t size)
 {
     if (size == 0) return NULL;
 
-    const size_t align = ARENA_ALIGNMENT;
-    size_t aligned_size = (size + align - 1) & ~(align - 1);
+    assert(arena->index % ARENA_ALIGNMENT == 0);
 
-    ArenaBlock *block = arena->current;
-    if (!block || block->used + aligned_size + align > block->capacity) {
-        size_t wanted = aligned_size > ARENA_BLOCK_SIZE ? aligned_size : ARENA_BLOCK_SIZE;
-        block = _arena_new_block(wanted + align);
-        if (!block) return NULL;
-        if (arena->current) arena->current->next = block;
-        else arena->head = block;
-        arena->current = block;
-    }
+    // simple alignment implementation
+    size_t padding = size % ARENA_ALIGNMENT;
+    if (padding != 0) padding = ARENA_ALIGNMENT - padding;
+    if (size > SIZE_MAX - padding) return NULL;  // size + padding would wrap size_t
 
-    uintptr_t base = (uintptr_t)block->data + block->used;
-    uintptr_t aligned = (base + (align - 1)) & ~(uintptr_t)(align - 1);
-    block->used = (size_t)(aligned - (uintptr_t)block->data) + size;
-    return (void *)aligned;
+    size_t reserved = size + padding;
+    if (reserved > SIZE_MAX - arena->index) return NULL;  // index + reserved would wrap size_t
+    if (!_realloc_if_needed(arena, reserved)) return NULL;
+
+    char *ini = (char*)arena->data + arena->index;
+    arena->index += reserved;
+    return ini;
 }
 
+// returns NULL of failure
 char *arena_strdup(Arena *arena, const char *content)
 {
-    if (!content) return NULL;
-    size_t size = strlen(content);
-    char *copy = arena_alloc(arena, size + 1);
-    if (!copy) return NULL;
-    memcpy(copy, content, size + 1);
-    return copy;
+    assert(content != NULL && "content cannot be NULL on arena_strdup()");
+    return arena_strndup(arena, content, 0);
 }
 
+// returns NULL of failure
 char *arena_strndup(Arena *arena, const char *content, size_t size)
 {
-    if (!content) return NULL;
-    char *copy = arena_alloc(arena, size + 1);
-    if (!copy) return NULL;
-    memcpy(copy, content, size);
-    copy[size] = '\0';
-    return copy;
-}
-
-void arena_reset(Arena *arena)
-{
-    for (ArenaBlock *block = arena->head; block; block = block->next) {
-        block->used = 0;
-    }
-    arena->current = arena->head;
+    assert(content != NULL && "content cannot be NULL on arena_strndup()");
+    size_t content_size = size == 0 ? strlen(content) : size;
+    char *pointer = arena_alloc(arena, content_size + 1);
+    if (pointer == NULL) return NULL;
+    memcpy(pointer, content, content_size);
+    pointer[content_size] = '\0';
+    return pointer;
 }
 
 void arena_free(Arena *arena)
 {
-    ArenaBlock *block = arena->head;
-    while (block) {
-        ArenaBlock *next = block->next;
-        free(block);
-        block = next;
+    if (arena->data) {
+        free(arena->data);
+        arena->data = NULL;
+        arena->index = 0;
+        arena->capacity = 0;
     }
-    arena->head = NULL;
-    arena->current = NULL;
+}
+
+void arena_reset(Arena *arena)
+{
+    arena->index = 0;
 }
 
 #endif // ARENA_IMPLEMENTATION
