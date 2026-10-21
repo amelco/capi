@@ -136,20 +136,38 @@ Key points:
 
 ### Per-request scratch memory
 
-Each request gets its own `Arena`:
+Each request gets its own `Arena`. The arena ships inside `ahb_lib.h` (there is no
+separate `arena.h`), so it is compiled together with `AHB_LIB_IMPLEMENTATION`:
 
 ```c
-Arena arena;
+Arena arena = {0};
 arena_init(&arena);
 
+Response res = read_from_client_arena(&arena, client, payload, PAYLOAD_SIZE);
+char *page = ahb_read_entire_file_arena(&arena, "./frontend/index.html");
 char *copy = arena_strdup(&arena, res.resource);
+
 /* ... */
 
 arena_free(&arena);
 ```
 
-Anything that must outlive the request (shared state, caches, maps) must use
-`malloc`/`strdup`, not the arena, or it will dangle after `arena_free()`.
+Rules of thumb:
+
+- `read_from_client_arena()` copies `resource`, `query` and `body` into the arena,
+  so do **not** call `free_response()` on that `Response` — `arena_free()` is the
+  only cleanup needed.
+- The arena must be zero-initialized (`Arena arena = {0};`). `arena_init()` is
+  optional: a zero-initialized arena grows on demand through `arena_alloc()`.
+  `INIT_ARENA_CAPACITY` (default 4 MB) sets the first block size and can be
+  overridden before `AHB_LIB_IMPLEMENTATION`.
+- `arena_alloc()` returns memory aligned to `ARENA_ALIGNMENT`, or `NULL` on failure.
+- `arena_reset()` rewinds the arena so the same block can be reused, e.g. across
+  requests handled by the same thread.
+- Growth uses `realloc()`, so do not keep arena pointers across a call that may
+  grow the arena.
+- Anything that must outlive the request (shared state, caches, maps) must use
+  `malloc`/`strdup`, not the arena, or it will dangle after `arena_free()`.
 
 ### Client jobs
 
@@ -187,13 +205,12 @@ that defines the matching macro before including the header.
 
 | Header | Macro | Overview |
 | --- | --- | --- |
-| `ahb_lib.h` | `AHB_LIB_IMPLEMENTATION` | General utilities: logging, command execution, args, string builders, hash map, file helpers, temp allocator, colors |
-| `arena.h` | `ARENA_IMPLEMENTATION` | Bump allocator for request-scoped scratch memory |
+| `ahb_lib.h` | `AHB_LIB_IMPLEMENTATION` | General utilities: logging, command execution, args, string builders, hash map, arena bump allocator, file helpers, temp allocator, colors |
 | `json.h` | `JSON_IMPLEMENTATION` | Minimal JSON parser with typed object/array accessors |
 | `network.h` | `NETWORK_IMPLEMENTATION` | Loopback TCP server/client, HTTP request parsing and response helpers |
 
 Define each macro in exactly one translation unit; `api.c` does this for all
-four. Note that `network.h` also defines `AHB_LIB_IMPLEMENTATION`, so a file
+three. Note that `network.h` also defines `AHB_LIB_IMPLEMENTATION`, so a file
 including it must not include `ahb_lib.h` with its implementation again.
 
 ---

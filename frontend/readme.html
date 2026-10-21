@@ -238,22 +238,32 @@
     break;</code></pre>
   <p>Key points:</p>
   <ul>
-    <li>Always call <code>free_response(&amp;res)</code> once you are done reading <code>res.resource</code>, <code>res.query</code> and <code>res.body</code>. They are heap-allocated by <code>read_from_client()</code>.</li>
+    <li>If you use <code>read_from_client()</code> (no arena), always call <code>free_response(&amp;res)</code> once you are done reading <code>res.resource</code>, <code>res.query</code> and <code>res.body</code>. They are heap-allocated by <code>read_from_client()</code>. With <code>read_from_client_arena()</code> the arena owns them.</li>
     <li>Use the <code>send_*</code> helpers instead of writing to the socket manually.</li>
     <li><code>payload</code> is a fixed <code>PAYLOAD_SIZE</code> (8 KiB) stack buffer; requests larger than that are truncated.</li>
     <li><code>VERB_QUANTITY_</code> is checked with <code>static_assert</code> so adding a new verb to the enum forces you to update the switch.</li>
   </ul>
 
   <h3>Per-request scratch memory</h3>
-  <p>Each request gets its own <code>Arena</code>:</p>
-  <pre><code class="language-c">Arena arena;
+  <p>Each request gets its own <code>Arena</code>. The arena ships inside <code>ahb_lib.h</code>, so it is compiled together with <code>AHB_LIB_IMPLEMENTATION</code>:</p>
+  <pre><code class="language-c">Arena arena = {0};
 arena_init(&amp;arena);
 
+Response res = read_from_client_arena(&amp;arena, client, payload, PAYLOAD_SIZE);
+char *page = ahb_read_entire_file_arena(&amp;arena, "./frontend/index.html");
 char *copy = arena_strdup(&amp;arena, res.resource);
+
 /* ... */
 
 arena_free(&amp;arena);</code></pre>
-  <p>Anything that must outlive the request (shared state, caches, maps) must use <code>malloc</code>/<code>strdup</code>, not the arena, or it will dangle after <code>arena_free()</code>.</p>
+  <ul>
+    <li><code>read_from_client_arena()</code> copies <code>resource</code>, <code>query</code> and <code>body</code> into the arena, so do <strong>not</strong> call <code>free_response()</code> on that <code>Response</code> — <code>arena_free()</code> is the only cleanup needed.</li>
+    <li>The arena must be zero-initialized (<code>Arena arena = {0};</code>). <code>arena_init()</code> is optional: a zero-initialized arena grows on demand through <code>arena_alloc()</code>. <code>INIT_ARENA_CAPACITY</code> (default 4 MB) sets the first block size and can be overridden before <code>AHB_LIB_IMPLEMENTATION</code>.</li>
+    <li><code>arena_alloc()</code> returns memory aligned to <code>ARENA_ALIGNMENT</code>, or <code>NULL</code> on failure.</li>
+    <li><code>arena_reset()</code> rewinds the arena so the same block can be reused, e.g. across requests handled by the same thread.</li>
+    <li>Growth uses <code>realloc()</code>, so do not keep arena pointers across a call that may grow the arena.</li>
+    <li>Anything that must outlive the request (shared state, caches, maps) must use <code>malloc</code>/<code>strdup</code>, not the arena, or it will dangle after <code>arena_free()</code>.</li>
+  </ul>
 
   <h3>Client jobs</h3>
   <p><code>main()</code> hands each accepted socket to a detached thread through a <code>ClientJob</code> struct. Extend that struct to pass request-scoped context into <code>handle_client()</code>:</p>
@@ -280,13 +290,12 @@ pthread_mutex_unlock(&amp;your_lock);</code></pre>
       <tr><th>Header</th><th>Macro</th><th>Overview</th></tr>
     </thead>
     <tbody>
-      <tr><td><code>ahb_lib.h</code></td><td><code>AHB_LIB_IMPLEMENTATION</code></td><td>General utilities: logging, command execution, args, string builders, hash map, file helpers, temp allocator, colors</td></tr>
-      <tr><td><code>arena.h</code></td><td><code>ARENA_IMPLEMENTATION</code></td><td>Bump allocator for request-scoped scratch memory</td></tr>
+      <tr><td><code>ahb_lib.h</code></td><td><code>AHB_LIB_IMPLEMENTATION</code></td><td>General utilities: logging, command execution, args, string builders, hash map, arena bump allocator, file helpers, temp allocator, colors</td></tr>
       <tr><td><code>json.h</code></td><td><code>JSON_IMPLEMENTATION</code></td><td>Minimal JSON parser with typed object/array accessors</td></tr>
       <tr><td><code>network.h</code></td><td><code>NETWORK_IMPLEMENTATION</code></td><td>Loopback TCP server/client, HTTP request parsing and response helpers</td></tr>
     </tbody>
   </table>
-  <p>Define each macro in exactly one translation unit; <code>api.c</code> does this for all four. Note that <code>network.h</code> also defines <code>AHB_LIB_IMPLEMENTATION</code>, so a file including it must not include <code>ahb_lib.h</code> with its implementation again.</p>
+  <p>Define each macro in exactly one translation unit; <code>api.c</code> does this for all three. Note that <code>network.h</code> also defines <code>AHB_LIB_IMPLEMENTATION</code>, so a file including it must not include <code>ahb_lib.h</code> with its implementation again.</p>
 
   <hr>
 
@@ -299,11 +308,11 @@ pthread_mutex_unlock(&amp;your_lock);</code></pre>
     C->>M: TCP connect
     M->>M: accept_client() + timeout setup
     M->>T: pthread_create(detached) with ClientJob
-    T->>T: read_from_client()
     T->>T: arena_init()
+    T->>T: read_from_client_arena()
     T->>T: route on verb + resource
     T->>C: send_200/400/404/500
-    T->>T: free_response() + arena_free()
+    T->>T: arena_free()
     T->>C: close()</pre>
 
   <h2 id="projects">Projects that uses CAPI</h2>

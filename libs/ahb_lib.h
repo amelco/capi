@@ -194,9 +194,7 @@ void ahb_temp_alloc_free(void);
 bool ahb_file_exits(const char *path);
 long ahb_get_file_size(const char *f);
 char *ahb_read_entire_file(const char *path);
-#ifdef AHB_USE_ARENA
 char *ahb_read_entire_file_arena(Arena *arena, const char *path);
-#endif // AHB_USE_ARENA
 
 // String operations
 String ahb_cstr_to_String(const char *cstr);
