@@ -89,50 +89,6 @@ typedef enum {
 extern bool log_print_timestamp;
 /* -------------------------------------------------------------------------- */
 
-/* ******************************************************************************************
- * Test functions - This is to be removed from here soon. Not sure if it is that useful
- * Usage: ahb_test(test_name, command, result, validation_function, expected_result, user_data)
- *   test_name            just a name to identify the test
-     command              command to be executed in the command line
-     result               the ExecResult struct already allocated in memory. It will be filled in with the result of the execution command
-     validation_function  it's a function pointer. You need to provide the validation function. It must match the type of the expected_result
-     expected_result      it's the expected result of the validation function
-     user_data            optional data to be passed if needed, so it can be used in the validation function
-
-     We provide test functions for the basic C types (int, bool, float). If you need to test a custom type you can 
-     create a new test_custom_type function. Note that you might need to make your own print result code instead of
-     using the _PRINT_RESULT() macro because it only works for int types for now.
- */
-
-    // DO NOT CHANGE those macros unless you really know what you're doing
-    #ifndef AHB_TEST_DEBUG
-    #define AHB_TEST_DEBUG false
-    #endif
-    
-    // the expected value determines the return type of the validation function
-    #define _TEST_PARAMS(T) char *name, ExecResult *result, char *cmd, T (*validation)(ExecResult*, const void*), T expected, const void* userdata
-    
-    #define _EXECUTE_TEST()                                                 \
-        if (!ahb_exec(result, cmd)) AHB_ABORT("could not execute command"); \
-        if (AHB_TEST_DEBUG) printf("%s\n", result->output)
-    
-    #define _VALIDATE(T)                     \
-        T got = validation(result, userdata)
-    
-    #define _PRINT_RESULT()                                                 \
-        if (got == expected) {                                              \
-            ahb_color_printf(COLOR_GREEN, "  PASS");                        \
-            printf(": %s\n", name);                                         \
-        }                                                                   \
-        else {                                                              \
-            ahb_color_printf(COLOR_RED, "  FAIL");                          \
-            printf(": %s\t(Got: %d, Expected: %d)\n", name, got, expected); \
-        }                                                                   
-    
-    // test functions
-    void ahb_test_int(_TEST_PARAMS(int));
-    void ahb_test_bool(_TEST_PARAMS(bool));
-/* ****************************************************************************************** */
 
 /* *** Hash Map ***************************************************************************** */
 /*
@@ -238,8 +194,6 @@ long long date_to_lld(const char *date);
 
 // strip ahb prefix when non conflict names is assured
 #ifdef AHB_STRIP_PREFIX
-#define ahb_test_int        test_int
-#define ahb_test_bool       test_bool
 #define args_init           ahb_args_init
 #define args_next           ahb_args_next
 #define exec                ahb_exec
@@ -288,25 +242,6 @@ void _ahb_exit(const char *file, int line, const char *thing, const char *format
     printf(")\n");
     exit(1);
 }
-
-/* **************************************************** 
- * Test Functions
- */
-void ahb_test_int(_TEST_PARAMS(int))
-{
-    _EXECUTE_TEST();
-    _VALIDATE(int);
-    _PRINT_RESULT();
-}
-
-void ahb_test_bool(_TEST_PARAMS(bool))
-{
-    _EXECUTE_TEST();
-    _VALIDATE(bool);
-    _PRINT_RESULT();
-}
-/* **************************************************** */
-
 
 void ahb_args_init(int argc, char **argv)
 {
