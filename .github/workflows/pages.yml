@@ -4,6 +4,15 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Select the runner environment'
+        required: true
+        type: choice
+        default: 'ubuntu-latest'
+        options:
+          - ubuntu-latest
+          - self-hosted
 
 permissions:
   contents: read
