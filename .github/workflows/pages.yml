@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ${{ github.event.inputs.runner }}
+    runs-on: ${{ inputs.runner }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
